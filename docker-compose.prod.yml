@@ -1,0 +1,53 @@
+# Production stack: Postgres + bot (VPS).
+# Usage on server: docker compose -f docker-compose.prod.yml --env-file .env up -d --build
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: diary-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-diary}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: ${POSTGRES_DB:-diary}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-diary} -d ${POSTGRES_DB:-diary}']
+      interval: 5s
+      timeout: 5s
+      retries: 8
+    networks:
+      - diary_internal
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: diary-bot
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-diary}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-diary}?schema=public
+    ports:
+      - '127.0.0.1:${HEALTH_PORT:-3000}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'curl -sf http://127.0.0.1:3000/health || exit 1']
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+    networks:
+      - diary_internal
+
+networks:
+  diary_internal:
+    driver: bridge
+
+volumes:
+  postgres_data:

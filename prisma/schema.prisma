@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OnboardingState {
+  AWAITING_INITIAL_INTRO
+  AWAITING_FOLLOWUP_ANSWERS
+  ONBOARDING_COMPLETED
+}
+
+enum DiaryEntryStatus {
+  DRAFT
+  COMPLETED
+}
+
+enum DiarySessionState {
+  IDLE
+  AWAITING_DIARY_ENTRY
+  AWAITING_DIARY_FOLLOWUP
+  AWAITING_DIARY_BLITZ
+  DIARY_COMPLETED
+}
+
+model User {
+  id             String   @id @default(cuid())
+  telegramId     BigInt   @unique @map("telegram_id")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  preferredName String?   @map("preferred_name")
+  gender         String?   @map("gender")
+  age            Int?      @map("age")
+  dateOfBirth    DateTime? @map("date_of_birth")
+  heightCm       Int?      @map("height_cm")
+  weightKg       Float?    @map("weight_kg")
+  occupation     String?   @map("occupation")
+  diaryGoals     String?   @map("diary_goals") @db.Text
+  badHabits      Json      @default("[]") @map("bad_habits")
+  healthNotes    String?   @map("health_notes") @db.Text
+  trackingParameters Json @default("[]") @map("tracking_parameters")
+
+  onboardingSession OnboardingSession?
+  diarySession      DiarySession?
+  diaryEntries      DiaryEntry[]
+
+  @@map("users")
+}
+
+model OnboardingSession {
+  id           String          @id @default(cuid())
+  userId       String          @unique @map("user_id")
+  state        OnboardingState @default(AWAITING_INITIAL_INTRO)
+  lastFollowUp String?         @map("last_follow_up") @db.Text
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("onboarding_sessions")
+}
+
+model DiaryEntry {
+  id                 String           @id @default(cuid())
+  userId             String           @map("user_id")
+  entryDate          DateTime         @map("entry_date") @db.Date
+  rawText            String?          @map("raw_text") @db.Text
+  combinedText       String           @default("") @map("combined_text") @db.Text
+  structuredDataJson      Json             @map("structured_data_json")
+  missingParametersJson Json             @default("[]") @map("missing_parameters_json")
+  aiSummary               String?          @map("ai_summary") @db.Text
+  status                  DiaryEntryStatus @default(DRAFT)
+  createdAt          DateTime         @default(now()) @map("created_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  user     User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessions DiarySession[]
+
+  @@unique([userId, entryDate])
+  @@map("diary_entries")
+}
+
+model DiarySession {
+  id                    String            @id @default(cuid())
+  userId                String            @unique @map("user_id")
+  diaryEntryId          String?           @map("diary_entry_id")
+  state                 DiarySessionState @default(IDLE)
+  followUpRound         Int               @default(0) @map("follow_up_round")
+  missingFieldsJson     Json              @default("[]") @map("missing_fields_json")
+  followUpQuestionsJson Json              @default("[]") @map("follow_up_questions_json")
+  createdAt             DateTime          @default(now()) @map("created_at")
+  updatedAt             DateTime          @updatedAt @map("updated_at")
+
+  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  diaryEntry DiaryEntry? @relation(fields: [diaryEntryId], references: [id], onDelete: SetNull)
+
+  @@map("diary_sessions")
+}
