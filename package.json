@@ -24,6 +24,7 @@
     "repair:profiles": "tsx scripts/repair-profiles.ts",
     "deploy:vps": "bash scripts/deploy-remote.sh",
     "deploy:railway": "railway up",
+    "railway:provision": "node scripts/railway-provision.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
@@ -40,6 +41,7 @@
     "eslint-config-prettier": "^10.1.5",
     "prettier": "^3.5.3",
     "prisma": "^6.8.2",
+    "@railway/cli": "^4.59.0",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.32.1"
