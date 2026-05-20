@@ -4,6 +4,7 @@ import {
   type DiaryAiResponse,
   type DiaryStructuredData,
 } from '../../types/diary-ai.types.js';
+import { collapseDuplicateDiaryNarratives } from '../../utils/diary-narrative-dedup.js';
 
 function asNullableScalar(value: unknown): string | number | null {
   if (value === null || value === undefined) {
@@ -61,7 +62,9 @@ export function validateDiaryAiResponse(value: unknown): DiaryAiResponse | null 
   }
   const root = value as Record<string, unknown>;
   return {
-    structured_data: normalizeStructuredData(root['structured_data']),
+    structured_data: collapseDuplicateDiaryNarratives(
+      normalizeStructuredData(root['structured_data']),
+    ),
     missing_fields: asStringArray(root['missing_fields']),
     follow_up_questions: asStringArray(root['follow_up_questions']),
     short_summary: asString(root['short_summary'], ''),

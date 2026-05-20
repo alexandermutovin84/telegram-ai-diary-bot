@@ -3,6 +3,7 @@ import {
   EMPTY_DIARY_STRUCTURED,
   type DiaryStructuredData,
 } from '../types/diary-ai.types.js';
+import { dedupeNarrativeBullets } from './diary-narrative-dedup.js';
 import { isTrackingParameterFilled, trackingKeyLabel } from './diary-tracking-fields.js';
 import { resolveTrackingParameterKeys, type TrackingParameterKey } from './tracking-parameters.js';
 
@@ -189,23 +190,31 @@ export function formatDiaryCompletionMessage(params: {
   const short = params.summary.trim() !== '' ? params.summary.trim() : 'день записан.';
   const enabled = resolveTrackingParameterKeys(params.enabledKeys);
 
-  const understood: string[] = [];
+  const narrativeLines: string[] = [];
   if (scalarPresent(params.structured.key_event)) {
-    understood.push(`— ${String(params.structured.key_event)}`);
+    narrativeLines.push(String(params.structured.key_event));
   }
   if (scalarPresent(params.structured.what_made_happy)) {
-    understood.push(`— ${String(params.structured.what_made_happy)}`);
+    narrativeLines.push(String(params.structured.what_made_happy));
   }
-  const understoodBlock = understood.length > 0 ? understood.join('\n') : `— ${short}`;
+  if (scalarPresent(params.structured.what_upset)) {
+    narrativeLines.push(String(params.structured.what_upset));
+  }
+  const deduped = dedupeNarrativeBullets(narrativeLines);
+  const understoodBlock =
+    deduped.length > 0 ? deduped.map((line) => `— ${line}`).join('\n') : `— ${short}`;
+
+  const hasKeyEventInNarrative = scalarPresent(params.structured.key_event);
 
   const displayKeys = enabled.filter(
     (k) =>
-      k === 'mood' ||
-      k === 'stress' ||
-      k === 'energy' ||
-      k === 'sleep' ||
-      isTrackingParameterFilled(k, params.structured) ||
-      params.missingParameters.includes(k),
+      (k !== 'daily_events' || !hasKeyEventInNarrative) &&
+      (k === 'mood' ||
+        k === 'stress' ||
+        k === 'energy' ||
+        k === 'sleep' ||
+        isTrackingParameterFilled(k, params.structured) ||
+        params.missingParameters.includes(k)),
   );
 
   const paramBlock = displayKeys

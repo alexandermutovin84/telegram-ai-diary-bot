@@ -22,6 +22,12 @@ export const DIARY_EXTRACTION_SYSTEM_PROMPT = `Ты помощник для ру
 - stress_level, energy_level, sleep_quality
 - key_event ИЛИ развёрнутое описание дня в тексте (если событие ясно из combined_diary_text — заполни key_event кратко).
 
+НЕ дублируй смысл в разных полях:
+- key_event — одна короткая строка: главные события дня (без повторов).
+- what_made_happy — только если это ОТДЕЛЬНЫЙ позитивный момент, не перефраз key_event.
+- Если событие уже в key_event, what_made_happy оставь null.
+- short_summary не должен дословно повторять key_event.
+
 Ответ ТОЛЬКО одним JSON без markdown по схеме:
 
 ${DIARY_AI_RESPONSE_JSON_SCHEMA}`;
